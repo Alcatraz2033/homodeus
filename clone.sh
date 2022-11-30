@@ -108,7 +108,7 @@ clone(){
 			sleep 1
 		done
 	else
-		xterm -geometry 93x20-50-350 -hold -title "Servidor" -e "ssh -R 80:localhost:80 localhost.run > link.txt" &
+		xterm -geometry 93x20-50-350 -hold -title "Servidor" -e "sudo ssh -R 80:localhost:80 localhost.run > link.txt" &
 		while true;do
 			if [[ -f 'link.txt' && -s 'link.txt' ]];then
 				link=$(cat link.txt | awk '{print $NF}')
