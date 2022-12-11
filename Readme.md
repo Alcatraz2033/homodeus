@@ -31,7 +31,7 @@ Clonar el repositorio y cambiar los permisos.
 
 ```markdown
 sudo apt install html2text
-git clone https://github.com/Alcatraz2033/homo-deus.git
+git clone https://github.com/Alcatraz2033/homodeus.git
 cd homodeus
 sudo ./homodeus.sh
 ```
