@@ -104,6 +104,7 @@ cheker(){
 }
 
 process(){
+	plantilla=$(cat sites/$1/site.txt)
 	echo -e "\n[${CYAN}+${END}] ${CYAN}Iniciando servidor${END}"
 	cd sites/$1
 	sudo service apache2 stop &>/dev/null
@@ -142,7 +143,6 @@ process(){
 }
 
 mask(){
-	plantilla=$(cat sites/$2/site.txt)
 	echo -e "[${CYAN}+${END}] ${RED}(OPCIONAL) ${CYAN}Ingrese el complemento de la plantilla separado por '-' Ejemplo: photos-perros${END}"
 	read -r -p "[${CYAN}+${END}] ${CYAN}Complemento de la plantilla:${END} " complemento 
 	complemento2=$(echo $complemento | sed 's/-/%7A/g')
