@@ -147,7 +147,7 @@ mask(){
 	read -r -p "[${CYAN}+${END}] ${CYAN}Complemento de la plantilla:${END} " complemento 
 	complemento2=$(echo $complemento | sed 's/-/%7A/g')
 	curl -s --data "url=$1&shorturl=&opt=0" https://is.gd/create.php | html2text > masbien.tmp
-	link=$(cat masbien.tmp | grep "https" | head -n 1 | sed 's/\[//' | sed 's/\]//' | sed 's/https:\/\///')
+	link=$(cat masbien.tmp | grep "\[" | head -n 1 | tr -d "\[\]" | awk -F '/' '{print $3, $4}' | tr ' ' '/')
 
 	if [ ! $complemento ];then
 		complete="$plantilla@$link"
